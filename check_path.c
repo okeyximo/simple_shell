@@ -1,145 +1,59 @@
 #include "holberton.h"
 
-
-
 /**
- *
- *  * checkPath - searches $PATH for directory of command
- *
- *   * @build: input build
- *
- *    */
-
-_Bool checkPath(config *build)
-
+ * updateOld - updates OLDPWD to current PWD
+ * @build: input build
+ * Return: index in linked list of PWD on success -
+ * If PWD or OLDPWD does not exist in environ vars,
+ * return -1
+ */
+int updateOld(config *build)
 {
+	register int pwdIndex = 0, index = 0;
+	static char old[BUFSIZE];
+	char *current = NULL;
 
-		register int len;
-
-			static char buffer[BUFSIZE];
-
-				struct stat st;
-
-					char *tok, *copy, *delim = ":", *tmp;
-
-						_Bool inLoop = false;
-
-
-
-							if (checkEdgeCases(build))
-
-										return (true);
-
-								copy = _strdup(build->path);
-
-									tok = _strtok(copy, delim);
-
-										while (tok)
-
-												{
-
-															tmp = inLoop ? tok - 2 : tok;
-
-																	if (*tmp == 0 && stat(build->args[0], &st) == 0)
-
-																				{
-
-																								build->fullPath = build->args[0];
-
-																											free(copy);
-
-																														return (true);
-
-																																}
-
-																			len = _strlen(tok) + _strlen(build->args[0]) + 2;
-
-																					_strcat(buffer, tok);
-
-																							_strcat(buffer, "/");
-
-																									_strcat(buffer, build->args[0]);
-
-																											insertNullByte(buffer, len - 1);
-
-																													if (stat(buffer, &st) == 0)
-
-																																{
-
-																																				free(copy);
-
-																																							build->fullPath = buffer;
-
-																																										return (true);
-
-																																												}
-
-																															insertNullByte(buffer, 0);
-
-																																	tok = _strtok(NULL, delim);
-
-																																			inLoop = true;
-
-																																				}
-
-											build->fullPath = build->args[0];
-
-												free(copy);
-
-													return (false);
-
+	_strcat(old, "OLD");
+	pwdIndex = searchNode(build->env, "PWD");
+	if (pwdIndex == -1)
+	{
+		return (-1);
+	}
+	current = getNodeAtIndex(build->env, pwdIndex);
+	_strcat(old, current);
+	insertNullByte(old, _strlen(current) + 4);
+	free(current);
+	index = searchNode(build->env, "OLDPWD");
+	if (index == -1)
+	{
+		return (-1);
+	}
+	deleteNodeAtIndex(&build->env, index);
+	addNodeAtIndex(&build->env, index, old);
+	insertNullByte(old, 0);
+	return (pwdIndex);
 }
 
-
-
 /**
- *
- *  * checkEdgeCases - helper func for check path to check edge cases
- *
- *   * @build: input build
- *
- *    * Return: true if found, false if not
- *
- *     */
-
-_Bool checkEdgeCases(config *build)
-
+ * updateCur - updates PWD to accurately reflect current directory
+ * @build: input build
+ * @index: index in linked list of where to insert PWD env var
+ * Return: true on success, false on failure
+ */
+_Bool updateCur(config *build, int index)
 {
+	static char tmp[BUFSIZE], cwd[BUFSIZE];
 
-		char *copy;
-
-			struct stat st;
-
-
-
-				copy = _strdup(build->path);
-
-					if (!copy)
-
-							{
-
-										build->fullPath = build->args[0];
-
-												free(copy);
-
-														return (true);
-
-															}
-
-						if (*copy == ':' && stat(build->args[0], &st) == 0)
-
-								{
-
-											build->fullPath = build->args[0];
-
-													free(copy);
-
-															return (true);
-
-																}
-
-							free(copy);
-
-								return (false);
-
-
+	getcwd(tmp, BUFSIZE);
+	_strcat(cwd, "PWD=");
+	_strcat(cwd, tmp);
+	if (index > -1)
+	{
+		deleteNodeAtIndex(&build->env, index);
+		addNodeAtIndex(&build->env, index, cwd);
+	} else
+		addNodeAtIndex(&build->env, 0, cwd);
+	insertNullByte(tmp, 0);
+	insertNullByte(cwd, 0);
+	return (true);
+}
